@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prova Classificació de la matèria 2n ESO</title>
+    <!-- Tailwind CSS per a l'estil -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- jsPDF per a generar informes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        /* Estils personalitzats addicionals */
+        .atom-button {
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        .atom-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        }
+        .feedback-modal-content {
+            min-height: 80px; /* Evita que la interfície salti en mostrar el feedback */
+        }
+        .correct-modal {
+            background-color: #f8fafc; /* Slate-50 */
+            color: #1e293b; /* Slate-800 */
+            border-left: 5px solid #334155; /* Slate-700 */
+        }
+        .incorrect-modal {
+            background-color: #f8fafc;
+            color: #1e293b;
+             border-left: 5px solid #334155;
+        }
+        .atom-sphere {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            display: inline-block;
+            border: 2px solid rgba(0,0,0,0.2);
+        }
+        .molecule-container, .atom-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            padding: 8px;
+            border-radius: 12px;
+            background-color: rgba(255, 255, 255, 0.7);
+            min-width: 80px;
+        }
+        .recipient-item {
+             display: inline-flex;
+             vertical-align: middle;
+             cursor: pointer;
+             transition: transform 0.2s, opacity 0.2s;
+        }
+        .recipient-item:hover {
+             transform: scale(0.9);
+             opacity: 0.7;
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-20px); }
+        }
+        .floating-score {
+            position: absolute;
+            font-weight: bold;
+            font-size: 1.2rem;
+            animation: floatUp 1s ease-out forwards;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans flex items-center justify-center min-h-screen text-slate-900">
+
+    <div class="container mx-auto p-4 max-w-4xl bg-white rounded-2xl shadow-2xl border-t-8 border-slate-700">
+
+        <!-- CAPÇALERA -->
+        <header class="flex flex-col sm:flex-row justify-between items-center p-4 border-b-2 border-slate-200">
+            <h1 class="text-2xl md:text-3xl font-bold text-slate-800 mb-2 sm:mb-0">📝 Prova Classificació de la matèria 2n ESO</h1>
+            <div class="flex items-center space-x-4">
+                <div id="score-display" class="hidden text-lg font-semibold relative">
+                    Punts: <span id="score" class="bg-slate-600 text-white rounded-full px-3 py-1">0</span>
+                    <div id="score-feedback-container" class="absolute top-0 right-0 h-full w-full pointer-events-none z-50"></div>
+                </div>
+                <button id="generate-report-btn" class="hidden bg-blue-700 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition duration-300 shadow-md">
+                    Genera Informe
+                </button>
+            </div>
+        </header>
+
+        <!-- SELECCIÓ DE NIVELL -->
+        <div class="p-4 flex justify-center gap-4">
+            <button id="level2-btn" class="bg-slate-700 text-white font-bold py-2 px-8 rounded-lg shadow-md hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-opacity-75 transition duration-300">Comença l'Examen</button>
+        </div>
+        
+        <hr class="border-slate-200"/>
+        <div class="p-4 flex items-center justify-center gap-2 bg-slate-50 rounded-lg m-4 border border-slate-100">
+            <label for="student-name" class="text-xl font-bold text-slate-700 uppercase tracking-wider">Alumne/a:</label>
+            <input type="text" id="student-name" placeholder="Escriu els teus cognoms i nom..." class="flex-grow p-3 border-2 rounded-lg text-lg bg-white border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm">
+        </div>
+
+
+        <!-- CONTINGUT PRINCIPAL -->
+        <main id="main-content" class="p-4 md:p-6">
+
+            <!-- NIVELL 2: EL CONSTRUCTOR ATÒMIC -->
+            <div id="level2-container">
+                 <h2 class="text-xl font-semibold text-center text-slate-500 mb-4 uppercase tracking-widest italic">Part Experimental</h2>
+                 <div class="bg-white p-6 rounded-xl shadow-lg border border-slate-200">
+                    <p class="text-center text-lg mb-2 text-slate-500 font-medium">Instrucció:</p>
+                    <h3 id="l2-goal" class="text-2xl font-bold text-slate-800 mb-8 text-center border-b-2 border-blue-100 pb-4">--</h3>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <!-- Paleta de components -->
+                        <div>
+                            <h4 class="font-bold mb-4 text-center text-slate-600 uppercase text-sm tracking-widest">Paleta de Partícules</h4>
+                            <div id="l2-palette" class="grid grid-cols-2 lg:grid-cols-3 gap-3 items-center justify-center p-4 bg-slate-100 rounded-xl border border-slate-200">
+                                <!-- Components visuals es generaran aquí -->
+                            </div>
+                        </div>
+                        <!-- Recipient de construcció -->
+                        <div>
+                            <h4 class="font-bold mb-4 text-center text-slate-600 uppercase text-sm tracking-widest">Recipient de Mostra</h4>
+                            <div id="l2-recipient" class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl min-h-[180px] p-4 flex flex-wrap gap-2 items-start shadow-inner">
+                                <!-- Components afegits apareixeran aquí -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-center gap-6 mt-10">
+                        <button id="l2-verify-btn" class="bg-blue-700 text-white font-extrabold py-4 px-10 rounded-xl hover:bg-blue-800 transition w-56 shadow-xl active:transform active:scale-95">Continuar</button>
+                        <button id="l2-reset-btn" class="bg-slate-400 text-white font-bold py-4 px-8 rounded-xl hover:bg-slate-500 transition shadow-lg active:transform active:scale-95">Reinicia</button>
+                    </div>
+                 </div>
+
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Finestra Modal per a Feedback -->
+    <div id="feedback-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div id="feedback-modal-content" class="feedback-modal-content bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+            <h3 id="modal-title" class="text-2xl font-bold mb-4">--</h3>
+            <p id="modal-explanation" class="mb-6">--</p>
+            <button id="modal-close-btn" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 w-full focus:ring-4 focus:ring-blue-300">Tanca i continua</button>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Dades de l'aplicació
+            let activeLevel2Challenges = []; // Aquest array contindrà els 8 reptes de la sessió actual
+
+            const masterPalette = [
+                { id: 'He', type: 'atom', isElement: true, state: 'gas', displayName: "Àtom d'Heli", atoms: [{ color: 'bg-pink-400' }] },
+                { id: 'Fe', type: 'atom', isElement: true, state: 'solid', displayName: "Àtom de Ferro", atoms: [{ color: 'bg-gray-500' }] },
+                { id: 'Li', type: 'atom', isElement: true, state: 'solid', displayName: "Àtom de Liti", atoms: [{ color: 'bg-red-400' }] },
+                { id: 'Ag', type: 'atom', isElement: true, state: 'solid', displayName: "Àtom de Plata", atoms: [{ color: 'bg-slate-300' }] },
+                { id: 'Cu', type: 'atom', isElement: true, state: 'solid', displayName: "Àtom de Coure", atoms: [{ color: 'bg-orange-400' }] },
+                { id: 'O2', type: 'molecule', isElement: true, state: 'gas', displayName: "Molècula d'Oxigen", atoms: [{ color: 'bg-blue-500' }, { color: 'bg-blue-500' }] },
+                { id: 'N2', type: 'molecule', isElement: true, state: 'gas', displayName: "Molècula de Nitrogen", atoms: [{ color: 'bg-purple-400' }, { color: 'bg-purple-400' }] },
+                { id: 'Cl2', type: 'molecule', isElement: true, state: 'gas', displayName: "Molècula de Clor", atoms: [{ color: 'bg-green-400' }, { color: 'bg-green-400' }] },
+                { id: 'O3', type: 'molecule', isElement: true, state: 'gas', displayName: "Molècula d'Ozó", atoms: [{ color: 'bg-blue-600' }, { color: 'bg-blue-600' }, { color: 'bg-blue-600' }] },
+                { id: 'H2O', type: 'molecule', isElement: false, state: 'liquid', displayName: "Molècula d'Aigua", atoms: [{ color: 'bg-gray-200' }, { color: 'bg-blue-500' }, { color: 'bg-gray-200' }] },
+                { id: 'CO2', type: 'molecule', isElement: false, state: 'gas', displayName: "Molècula de CO₂", atoms: [{ color: 'bg-gray-700' }, { color: 'bg-red-500' }, { color: 'bg-red-500' }] },
+                { id: 'NaCl', type: 'molecule', isElement: false, state: 'solid', displayName: "Unitat de Sal (NaCl)", atoms: [{ color: 'bg-green-300' }, { color: 'bg-blue-200' }] },
+                { id: 'CO', type: 'molecule', isElement: false, state: 'gas', displayName: "Molècula de CO", atoms: [{ color: 'bg-gray-700' }, { color: 'bg-red-500' }] },
+                { id: 'CuCl2', type: 'molecule', isElement: false, state: 'solid', displayName: "Clorur de Coure(II)", atoms: [{ color: 'bg-orange-400' }, { color: 'bg-green-400' }, { color: 'bg-green-400' }] }
+            ];
+
+            const level2Challenges = [
+                {
+                    goal: "Construeix un element lliure (monoatòmic)",
+                    validation: (items) => items.length > 0 && items.every(item => item.id === items[0].id && item.isElement && item.type === 'atom'),
+                    explanation_correct: "Correcte! Has construït un element monoatòmic.",
+                    explanation_incorrect: "Incorrecte. No has complert el concepte d'element monoatòmic."
+                },
+                {
+                    goal: "Construeix un element diatòmic",
+                    validation: (items) => items.length > 0 && items.every(item => item.id === items[0].id && item.isElement && item.atoms.length === 2),
+                    explanation_correct: "Correcte! Has construït un element diatòmic.",
+                    explanation_incorrect: "Incorrecte. No has complert el concepte d'element diatòmic."
+                },
+                {
+                    goal: "Construeix un element triatòmic",
+                    validation: (items) => items.length > 0 && items.every(item => item.id === items[0].id && item.isElement && item.atoms.length === 3),
+                    explanation_correct: "Correcte! Has construït un element triatòmic.",
+                    explanation_incorrect: "Incorrecte. No has complert el concepte d'element triatòmic."
+                },
+                {
+                    goal: "Construeix un aliatge",
+                    validation: (items) => {
+                        const uniqueIds = new Set(items.map(item => item.id));
+                        const allMetals = items.every(item => item.isElement && item.state === 'solid');
+                        return uniqueIds.size > 1 && allMetals;
+                    },
+                    explanation_correct: "Correcte! Has construït un aliatge.",
+                    explanation_incorrect: "Incorrecte. No has complert el concepte d'aliatge."
+                },
+                {
+                    goal: "Construeix un compost pur",
+                    validation: (items) => items.length > 0 && items.every(item => item.id === items[0].id && !item.isElement),
+                    explanation_correct: "Correcte! Has construït un compost pur.",
+                    explanation_incorrect: "Incorrecte. No has complert el concepte de compost pur."
+                },
+                {
+                    goal: "Construeix una mescla de dos elements",
+                    validation: (items) => {
+                        const uniqueIds = new Set(items.map(item => item.id));
+                        const allElements = items.every(item => item.isElement);
+                        return uniqueIds.size === 2 && allElements;
+                    },
+                    explanation_correct: "Correcte! Has construït una mescla de dos elements.",
+                    explanation_incorrect: "Incorrecte. No has complert el concepte de mescla d'elements."
+                },
+                {
+                    goal: "Construeix una mescla de dos compostos",
+                    validation: (items) => {
+                        const uniqueIds = new Set(items.map(item => item.id));
+                        const allCompounds = items.every(item => !item.isElement);
+                        return uniqueIds.size === 2 && allCompounds;
+                    },
+                    explanation_correct: "Correcte! Has construït una mescla de dos compostos.",
+                    explanation_incorrect: "Incorrecte. No has complert el concepte de mescla de compostos."
+                },
+                {
+                    goal: "Construeix una mescla d'un element i un compost",
+                    validation: (items) => {
+                        const hasElement = items.some(item => item.isElement);
+                        const hasCompound = items.some(item => !item.isElement);
+                        const uniqueIds = new Set(items.map(item => item.id));
+                        return uniqueIds.size === 2 && hasElement && hasCompound;
+                    },
+                    explanation_correct: "Correcte! Has construït una mescla d'element i compost.",
+                    explanation_incorrect: "Incorrecte. No has complert el concepte de mescla d'element i compost."
+                },
+                {
+                    goal: "Construeix una mescla homogènia gasosa",
+                    validation: (items) => {
+                        const uniqueIds = new Set(items.map(item => item.id));
+                        const allGas = items.every(item => item.state === 'gas');
+                        return uniqueIds.size > 1 && allGas;
+                    },
+                    explanation_correct: "Correcte! Has construït una mescla homogènia gasosa.",
+                    explanation_incorrect: "Incorrecte. No has complert el concepte de mescla homogènia gasosa."
+                },
+                {
+                    goal: "Construeix una mescla heterogènia",
+                    validation: (items) => {
+                        const states = new Set(items.map(item => item.state));
+                        return states.size > 1; // Diferents estats implica heterogènia en aquest model
+                    },
+                    explanation_correct: "Correcte! Has construït una mescla heterogènia.",
+                    explanation_incorrect: "Incorrecte. No has complert el concepte de mescla heterogènia."
+                },
+                {
+                    goal: "Construeix una substància pura",
+                    validation: (items) => items.length > 0 && items.every(item => item.id === items[0].id),
+                    explanation_correct: "Correcte! Has construït una substància pura.",
+                    explanation_incorrect: "Incorrecte. No has complert el concepte de substància pura."
+                },
+                {
+                    goal: "Construeix una dissolució líquida",
+                    validation: (items) => {
+                        const hasLiquid = items.some(item => item.state === 'liquid');
+                        const uniqueIds = new Set(items.map(item => item.id));
+                        return uniqueIds.size > 1 && hasLiquid;
+                    },
+                    explanation_correct: "Correcte! Has construït una dissolució líquida.",
+                    explanation_incorrect: "Incorrecte. No has complert el concepte de dissolució líquida."
+                },
+                {
+                    goal: "Construeix un element en estat sòlid",
+                    validation: (items) => items.length > 0 && items.every(item => item.id === items[0].id && item.isElement && item.state === 'solid'),
+                    explanation_correct: "Correcte! Has construït un element sòlid.",
+                    explanation_incorrect: "Incorrecte. No has complert els requisits de l'element sòlid."
+                },
+                {
+                    goal: "Construeix un compost en estat gasós",
+                    validation: (items) => items.length > 0 && items.every(item => item.id === items[0].id && !item.isElement && item.state === 'gas'),
+                    explanation_correct: "Correcte! Has construït un compost gasós.",
+                    explanation_incorrect: "Incorrecte. No has complert els requisits del compost gasós."
+                },
+                {
+                    goal: "Construeix una mescla de tres components diferents",
+                    validation: (items) => {
+                        const uniqueIds = new Set(items.map(item => item.id));
+                        return uniqueIds.size === 3;
+                    },
+                    explanation_correct: "Correcte! Has construït una mescla de tres components.",
+                    explanation_incorrect: "Incorrecte. No hi ha exactament tres components diferents."
+                },
+                {
+                    goal: "Construeix una mescla de dos gasos",
+                    validation: (items) => {
+                        const uniqueIds = new Set(items.map(item => item.id));
+                        const allGas = items.every(item => item.state === 'gas');
+                        return uniqueIds.size === 2 && allGas;
+                    },
+                    explanation_correct: "Correcte! Has construït una mescla de dos gasos.",
+                    explanation_incorrect: "Incorrecte. No has posat exactament dos gasos diferents."
+                },
+                {
+                    goal: "Construeix una mescla heterogènia de sòlid i líquid",
+                    validation: (items) => {
+                        const states = new Set(items.map(item => item.state));
+                        return states.has('solid') && states.has('liquid');
+                    },
+                    explanation_correct: "Correcte! Has construït una mescla de sòlid i líquid.",
+                    explanation_incorrect: "Incorrecte. No has combinat sòlids i líquids."
+                },
+                {
+                    goal: "Construeix una substància pura monoatòmica",
+                    validation: (items) => items.length > 0 && items.every(item => item.id === items[0].id && item.type === 'atom'),
+                    explanation_correct: "Correcte! Has construït una substància pura monoatòmica.",
+                    explanation_incorrect: "Incorrecte. No has complert el concepte de substància monoatòmica."
+                },
+                {
+                    goal: "Construeix una mescla de dos metalls",
+                    validation: (items) => {
+                        const uniqueIds = new Set(items.map(item => item.id));
+                        const allMetals = items.every(item => item.isElement && item.state === 'solid');
+                        return uniqueIds.size === 2 && allMetals;
+                    },
+                    explanation_correct: "Correcte! Has construït una mescla de dos metalls.",
+                    explanation_incorrect: "Incorrecte. No has posat exactament dos metalls diferents."
+                },
+                {
+                    goal: "Construeix una mescla de gas i líquid",
+                    validation: (items) => {
+                        const states = new Set(items.map(item => item.state));
+                        return states.has('gas') && states.has('liquid');
+                    },
+                    explanation_correct: "Correcte! Has construït una mescla de gas i líquid.",
+                    explanation_incorrect: "Incorrecte. No has combinat gasos i líquids."
+                }
+            ];
+
+            // Estat de l'aplicació (Refactoritzat en un sol objecte)
+            const state = {
+                currentLevel: 2,
+                score: 0,
+                l2_currentChallengeIndex: 0,
+                l2_recipientItems: [],
+                reportData: [],
+                advanceOnModalClose: false
+            };
+
+            // Elements del DOM
+            const scoreEl = document.getElementById('score');
+            const level2Container = document.getElementById('level2-container');
+            const l2_goalEl = document.getElementById('l2-goal');
+            const l2_paletteEl = document.getElementById('l2-palette');
+            const l2_recipientEl = document.getElementById('l2-recipient');
+            const l2_verifyBtn = document.getElementById('l2-verify-btn');
+            const l2_resetBtn = document.getElementById('l2-reset-btn');
+            const modalEl = document.getElementById('feedback-modal');
+            const modalContentEl = document.getElementById('feedback-modal-content');
+            const modalTitleEl = document.getElementById('modal-title');
+            const modalExplanationEl = document.getElementById('modal-explanation');
+            const modalCloseBtn = document.getElementById('modal-close-btn');
+
+            // Inicialització
+            init();
+
+            function init() {
+                // Comprova si la prova ja s'ha acabat anteriorment
+                if (localStorage.getItem('testFinished') === 'true') {
+                    showFinishedMessage();
+                    return;
+                }
+
+                // Selecciona 5 reptes aleatoris per a la sessió del Nivell 2
+                activeLevel2Challenges = level2Challenges.sort(() => Math.random() - 0.5).slice(0, 5);
+
+                document.getElementById('level2-btn').addEventListener('click', () => switchLevel(2));
+                
+                l2_verifyBtn.addEventListener('click', verifyLevel2);
+                l2_resetBtn.addEventListener('click', resetLevel2Recipient);
+                document.getElementById('generate-report-btn').addEventListener('click', generateReport);
+                modalCloseBtn.addEventListener('click', closeModal);
+                modalEl.addEventListener('click', (e) => {
+                    if (e.target === modalEl) closeModal();
+                });
+
+                // Tancar modal amb tecla ESC
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && !modalEl.classList.contains('hidden')) {
+                        closeModal();
+                    }
+                });
+
+                switchLevel(2);
+            }
+
+            function showFinishedMessage() {
+                level2Container.classList.remove('hidden');
+                l2_goalEl.textContent = "Prova finalitzada";
+                l2_paletteEl.innerHTML = "";
+                l2_recipientEl.innerHTML = "<div class='text-center p-8 w-full'><p class='text-2xl font-bold text-indigo-600 mb-4'>Has completat aquesta prova.</p><p class='text-gray-600'>L'informe ja ha estat generat i no es pot tornar a realitzar el test.</p></div>";
+                l2_verifyBtn.classList.add('hidden');
+                l2_resetBtn.classList.add('hidden');
+                document.getElementById('student-name').disabled = true;
+                document.getElementById('level2-btn').disabled = true;
+            }
+            
+            function switchLevel(level) {
+                state.currentLevel = level;
+                level2Container.classList.remove('hidden');
+                document.getElementById('level2-btn').classList.add('bg-purple-700', 'ring-2');
+                loadLevel2Challenge();
+            }
+
+            function updateScore(points) {
+                state.score += points;
+                scoreEl.textContent = state.score;
+                
+                const feedbackEl = document.createElement('span');
+                feedbackEl.textContent = points > 0 ? `+${points}` : points;
+                feedbackEl.className = `floating-score ${points > 0 ? 'text-green-500' : 'text-red-500'} -ml-4 -mt-6`;
+                
+                const container = document.getElementById('score-feedback-container');
+                if (container) {
+                    container.appendChild(feedbackEl);
+                    setTimeout(() => {
+                        if(container.contains(feedbackEl)) {
+                            feedbackEl.remove();
+                        }
+                    }, 1000);
+                }
+            }
+
+            // --- LÒGICA MODAL ---
+            function showModal(title, explanation, isCorrect, shouldAdvance = true) {
+                state.advanceOnModalClose = shouldAdvance;
+                modalTitleEl.textContent = title;
+                modalExplanationEl.textContent = explanation;
+                modalContentEl.className = 'feedback-modal-content bg-white rounded-lg shadow-xl p-6 max-w-md w-full'; // Reset
+                if (isCorrect === true) {
+                    modalContentEl.classList.add('correct-modal');
+                } else if (isCorrect === false) {
+                    modalContentEl.classList.add('incorrect-modal');
+                }
+                modalEl.classList.remove('hidden');
+            }
+
+            function closeModal() {
+                modalEl.classList.add('hidden');
+                if (state.advanceOnModalClose) {
+                     if (state.currentLevel === 2) {
+                        nextLevel2Challenge();
+                    }
+                }
+            }
+
+
+            // --- LÒGICA NIVELL 2 ---
+             function loadLevel2Challenge() {
+                if (state.l2_currentChallengeIndex >= activeLevel2Challenges.length) {
+                    document.getElementById('generate-report-btn').classList.remove('hidden');
+                    l2_goalEl.textContent = "Activitat completada!";
+                    l2_paletteEl.innerHTML = "";
+                    l2_recipientEl.innerHTML = "<div class='text-center p-4 w-full'><p class='text-xl font-bold text-green-600 mb-4'>🎉 Felicitats! Has acabat totes les tasques.</p><p>Ja pots generar el teu informe de resultats clicant el botó superior.</p></div>";
+                    l2_verifyBtn.classList.add('hidden');
+                    l2_resetBtn.classList.add('hidden');
+                    return;
+                }
+                const challenge = activeLevel2Challenges[state.l2_currentChallengeIndex];
+                l2_goalEl.textContent = `${challenge.goal} (${state.l2_currentChallengeIndex + 1} de 5)`;
+                l2_paletteEl.innerHTML = '';
+                
+                masterPalette.forEach(comp => {
+                    const compContainer = document.createElement('button');
+                    compContainer.className = 'atom-button flex flex-col items-center justify-center p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400';
+                    compContainer.title = comp.displayName;
+                    compContainer.ariaLabel = comp.displayName;
+                    
+                    const visualEl = document.createElement('div');
+                    visualEl.className = comp.type === 'atom' ? 'atom-container' : 'molecule-container';
+
+                    comp.atoms.forEach(atom => {
+                        const atomSphere = document.createElement('div');
+                        atomSphere.className = `atom-sphere ${atom.color}`;
+                        visualEl.appendChild(atomSphere);
+                    });
+                    
+                    const labelEl = document.createElement('span');
+                    labelEl.className = 'text-xs font-bold mt-1 text-gray-700';
+                    labelEl.textContent = comp.id;
+                    
+                    compContainer.appendChild(visualEl);
+                    compContainer.appendChild(labelEl);
+                    compContainer.addEventListener('click', () => addComponentToRecipient(comp));
+                    l2_paletteEl.appendChild(compContainer);
+                });
+
+                resetLevel2Recipient();
+                l2_verifyBtn.disabled = false;
+                l2_verifyBtn.textContent = "Continuar";
+                l2_resetBtn.disabled = false;
+            }
+
+            function addComponentToRecipient(comp) {
+                state.l2_recipientItems.push(comp);
+                const visualClone = document.createElement('div');
+                visualClone.className = 'recipient-item';
+                visualClone.title = "Fes clic per esborrar";
+                const container = document.createElement('div');
+                container.className = comp.type === 'atom' ? 'atom-container' : 'molecule-container';
+                comp.atoms.forEach(atom => {
+                    const atomSphere = document.createElement('div');
+                    atomSphere.className = `atom-sphere ${atom.color}`;
+                    container.appendChild(atomSphere);
+                });
+                visualClone.appendChild(container);
+                
+                visualClone.addEventListener('click', () => {
+                    const index = state.l2_recipientItems.indexOf(comp);
+                    if (index > -1) {
+                        state.l2_recipientItems.splice(index, 1);
+                    }
+                    visualClone.remove();
+                });
+                
+                l2_recipientEl.appendChild(visualClone);
+            }
+
+            function resetLevel2Recipient() {
+                state.l2_recipientItems = [];
+                l2_recipientEl.innerHTML = '';
+            }
+            
+            function verifyLevel2() {
+                l2_verifyBtn.disabled = true;
+                l2_verifyBtn.innerHTML = `<svg class="animate-spin h-5 w-5 mr-3 inline-block" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="4" stroke-dasharray="20 10" stroke-linecap="round"></circle></svg> Continuant...`;
+                
+                setTimeout(() => {
+                    const challenge = activeLevel2Challenges[state.l2_currentChallengeIndex];
+                    const isCorrect = challenge.validation(state.l2_recipientItems);
+                    
+                    if (isCorrect) {
+                        state.score += 15;
+                    }
+
+                    state.reportData.push({
+                         level: 2,
+                         question: `Construir: ${challenge.goal}`,
+                         answer: state.l2_recipientItems.map(item => item.displayName).join(', ') || '(buit)',
+                         isCorrect: isCorrect,
+                         explanation: isCorrect ? "" : challenge.explanation_incorrect,
+                         points: isCorrect ? 15 : 0
+                     });
+                     
+                     nextLevel2Challenge();
+                     
+                }, 400); // Temps mínim per a feedback d'acció
+            }
+
+            function nextLevel2Challenge() {
+                state.l2_currentChallengeIndex++;
+                loadLevel2Challenge();
+            }
+
+            // --- GENERACIÓ D'INFORME ---
+            function generateReport() {
+                const nameInput = document.getElementById('student-name');
+                const studentName = nameInput.value.trim();
+                
+                if (!studentName) {
+                    alert("Si us plau, escriu el teu nom abans de generar l'informe.");
+                    nameInput.focus();
+                    nameInput.classList.add('ring-4', 'ring-red-500');
+                    return;
+                }
+
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                const date = new Date().toLocaleDateString('ca-ES');
+                const pageHeight = doc.internal.pageSize.height;
+                const pageWidth = doc.internal.pageSize.width;
+                let y = 0;
+
+                let totalPossiblePoints = 0;
+                state.reportData.forEach(item => {
+                    if (item.level === 2 && item.isCorrect !== null) totalPossiblePoints += 15;
+                });
+                const validScore = state.score > 0 ? state.score : 0;
+                const percentage = totalPossiblePoints > 0 ? Math.round((validScore / totalPossiblePoints) * 100) : 0;
+                
+                doc.setFillColor(30, 41, 59); // Slate-800
+                doc.rect(0, 0, pageWidth, 25, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(18);
+                doc.setFont(undefined, 'bold');
+                doc.text("Prova Classificació de la matèria 2n ESO", pageWidth / 2, 16, { align: 'center' });
+                y = 40;
+
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(14);
+                doc.setFont(undefined, 'bold');
+                doc.text("Resum de l'Activitat", 14, y);
+                y += 5;
+                doc.setDrawColor(200, 200, 200);
+                doc.setLineWidth(0.5);
+                doc.rect(14, y, pageWidth - 28, 25);
+                doc.setFont(undefined, 'normal');
+                doc.setFontSize(12);
+                doc.text(`Alumne/a: ${studentName}`, 20, y + 8);
+                doc.text(`Data: ${date}`, 20, y + 15);
+                doc.setFont(undefined, 'bold');
+                doc.text(`Nota: ${percentage}% (${validScore} punts)`, pageWidth - 20, y + 15, { align: 'right' });
+                y += 35;
+                
+                doc.setFontSize(14);
+                doc.setFont(undefined, 'bold');
+                doc.text("Detall de Respostes", 14, y);
+                y += 8;
+                doc.setFillColor(243, 244, 246);
+                doc.rect(14, y, pageWidth - 28, 10, 'F');
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'bold');
+                doc.text("Repte", 18, y + 7);
+                doc.text("Resposta / Explicació error", 40, y + 7);
+                doc.text("Resultat", 150, y + 7);
+                doc.text("Punts", 185, y + 7);
+                y += 10;
+
+                state.reportData.forEach((item) => {
+                    if (y > pageHeight - 40) {
+                        doc.addPage();
+                        y = 20;
+                    }
+                    
+                    const questionText = doc.splitTextToSize(item.question, 120);
+                    const answerText = doc.splitTextToSize(`R: ${item.answer}`, 105);
+                    const explanationText = item.isCorrect === false ? doc.splitTextToSize(`Error: ${item.explanation}`, 105) : [];
+                    
+                    const rowHeight = (questionText.length * 5) + (answerText.length * 5) + (explanationText.length * 5) + 5;
+
+                    doc.setDrawColor(229, 231, 235);
+                    doc.line(14, y + rowHeight, pageWidth - 14, y + rowHeight);
+                    
+                    doc.setFont(undefined, 'bold');
+                    doc.setTextColor(30, 41, 59);
+                    doc.text(questionText, 18, y + 7);
+                    
+                    doc.setFont(undefined, 'normal');
+                    doc.setTextColor(107, 114, 128);
+                    doc.text(answerText, 40, y + 12);
+                    
+                    if (item.isCorrect === false) {
+                        doc.setTextColor(220, 38, 38);
+                        doc.text(explanationText, 40, y + 12 + (answerText.length * 5));
+                    }
+                    
+                    doc.setFont(undefined, 'bold');
+                    if (item.isCorrect === true) {
+                        doc.setTextColor(22, 163, 74);
+                        doc.text("Correcte", 150, y + 7);
+                    } else if (item.isCorrect === false) {
+                        doc.setTextColor(220, 38, 38);
+                        doc.text("Incorrecte", 150, y + 7);
+                    }
+                    
+                    doc.setTextColor(0, 0, 0);
+                    doc.text(item.points.toString(), 188, y + 7);
+
+                    y += rowHeight;
+                });
+
+                doc.setDrawColor(200, 200, 200);
+                doc.line(14, pageHeight-15, pageWidth-14, pageHeight-15);
+                doc.setFontSize(8);
+                doc.setTextColor(150);
+                doc.text("Informe generat per l'aplicació Classificador de Matèria.", pageWidth/2, pageHeight-10, {align: 'center'});
+
+                doc.save(`informe_quimica_${studentName.replace(/\s/g, '_')}.pdf`);
+                
+                // Bloquejar la prova un cop generat l'informe
+                localStorage.setItem('testFinished', 'true');
+                setTimeout(() => {
+                    showFinishedMessage();
+                    document.getElementById('generate-report-btn').classList.add('hidden');
+                }, 1000);
+            }
+
+        });
+    </script>
+</body>
+</html>
+
