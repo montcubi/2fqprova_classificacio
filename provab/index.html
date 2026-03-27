@@ -1,0 +1,128 @@
+<!-- NOMÉS et mostro la part JS modificada perquè no sigui innecessàriament llarg -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    let activeLevel2Challenges = [];
+
+    // --- FUNCIONS ALEATÒRIES CORRECTES ---
+    function shuffle(array) {
+        const newArray = [...array];
+        for (let i = newArray.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+        }
+        return newArray;
+    }
+
+    function getRandomChallenges(allChallenges, num) {
+        return shuffle(allChallenges).slice(0, num);
+    }
+
+    // --- REPTES (amb petites millores de rigor) ---
+    const level2Challenges = [
+        {
+            goal: "Construeix un element lliure (monoatòmic)",
+            validation: (items) => items.length >= 2 && items.every(i => i.id === items[0].id && i.type === 'atom'),
+            explanation_correct: "Correcte! Element monoatòmic.",
+            explanation_incorrect: "Han de ser àtoms iguals i mínim 2."
+        },
+        {
+            goal: "Construeix un element diatòmic",
+            validation: (items) => items.length >= 2 && items.every(i => i.isElement && i.atoms.length === 2 && i.id === items[0].id),
+            explanation_correct: "Correcte! Element diatòmic.",
+            explanation_incorrect: "Han de ser molècules iguals de 2 àtoms."
+        },
+        {
+            goal: "Construeix un compost pur",
+            validation: (items) => items.length >= 2 && items.every(i => !i.isElement && i.id === items[0].id),
+            explanation_correct: "Correcte! Compost pur.",
+            explanation_incorrect: "Totes les molècules han de ser iguals."
+        },
+        {
+            goal: "Construeix una mescla de dos elements",
+            validation: (items) => {
+                const ids = new Set(items.map(i => i.id));
+                return ids.size === 2 && items.every(i => i.isElement);
+            },
+            explanation_correct: "Correcte! Mescla d'elements.",
+            explanation_incorrect: "Han de ser dos elements diferents."
+        },
+        {
+            goal: "Construeix una mescla heterogènia",
+            validation: (items) => {
+                const states = new Set(items.map(i => i.state));
+                return states.size > 1;
+            },
+            explanation_correct: "Correcte! Mescla heterogènia.",
+            explanation_incorrect: "Han d'haver-hi diferents estats."
+        },
+        {
+            goal: "Construeix una dissolució líquida",
+            validation: (items) => {
+                const hasLiquid = items.some(i => i.state === 'liquid');
+                return hasLiquid && new Set(items.map(i => i.id)).size > 1;
+            },
+            explanation_correct: "Correcte! Dissolució líquida.",
+            explanation_incorrect: "Cal líquid + altra substància."
+        }
+    ];
+
+    // --- ESTAT ---
+    const state = {
+        score: 0,
+        index: 0,
+        items: []
+    };
+
+    // --- ELEMENTS ---
+    const goalEl = document.getElementById('l2-goal');
+    const paletteEl = document.getElementById('l2-palette');
+    const recipientEl = document.getElementById('l2-recipient');
+    const verifyBtn = document.getElementById('l2-verify-btn');
+
+    // --- INICI ---
+    activeLevel2Challenges = getRandomChallenges(level2Challenges, 5);
+    loadChallenge();
+
+    function loadChallenge() {
+        if (state.index >= activeLevel2Challenges.length) {
+            goalEl.textContent = "Finalitzat!";
+            return;
+        }
+        goalEl.textContent = activeLevel2Challenges[state.index].goal;
+        recipientEl.innerHTML = "";
+        state.items = [];
+    }
+
+    function verify() {
+        const challenge = activeLevel2Challenges[state.index];
+        const correct = challenge.validation(state.items);
+
+        showModal(
+            correct ? "Correcte!" : "Incorrecte",
+            correct ? challenge.explanation_correct : challenge.explanation_incorrect,
+            correct
+        );
+
+        if (correct) state.score += 15;
+
+        state.index++;
+    }
+
+    verifyBtn.addEventListener('click', verify);
+
+    // --- MODAL FUNCIONAL ---
+    function showModal(title, text, isCorrect) {
+        const modal = document.getElementById('feedback-modal');
+        document.getElementById('modal-title').textContent = title;
+        document.getElementById('modal-explanation').textContent = text;
+        modal.classList.remove('hidden');
+    }
+
+    document.getElementById('modal-close-btn').addEventListener('click', () => {
+        document.getElementById('feedback-modal').classList.add('hidden');
+        loadChallenge();
+    });
+
+});
+</script>
